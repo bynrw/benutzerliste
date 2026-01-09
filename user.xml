@@ -147,4 +147,21 @@
         WHERE user_uid = #{userUid, typeHandler=de.nrw.it.ignrw.administration.config.UUIDTypeHandler}
     </delete>
 
+    <!-- Benutzer-Organisation-Rolle Verknüpfung erstellen -->
+    <insert id="insertUserRoleOrg" parameterType="map">
+        INSERT INTO ua_user_role_org (user_id, org_id, role_id)
+        SELECT 
+            (SELECT user_id FROM ua_user WHERE user_uid = #{userUid, typeHandler=de.nrw.it.ignrw.administration.config.UUIDTypeHandler}),
+            (SELECT org_id FROM ua_organisation WHERE org_name = #{orgName}),
+            (SELECT role_id FROM ua_roles WHERE role_name = #{roleName})
+        WHERE EXISTS (SELECT 1 FROM ua_organisation WHERE org_name = #{orgName})
+          AND EXISTS (SELECT 1 FROM ua_roles WHERE role_name = #{roleName})
+    </insert>
+
+    <!-- Benutzer-Organisation-Rolle Verknüpfung löschen -->
+    <delete id="deleteUserRoleOrg" parameterType="java.util.UUID">
+        DELETE FROM ua_user_role_org
+        WHERE user_id = (SELECT user_id FROM ua_user WHERE user_uid = #{userUid, typeHandler=de.nrw.it.ignrw.administration.config.UUIDTypeHandler})
+    </delete>
+
 </mapper>
