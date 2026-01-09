@@ -118,14 +118,18 @@
             first_name,
             last_name,
             mail,
-            phone
+            phone,
+            passwd,
+            wrong_passwd
         ) VALUES (
             #{userUid, typeHandler=de.nrw.it.ignrw.administration.config.UUIDTypeHandler},
             #{username},
             #{firstname},
             #{lastname},
             #{mail},
-            #{phone}
+            #{phone},
+            #{passwd},
+            0
         )
     </insert>
 
@@ -133,7 +137,8 @@
     <update id="updateUser" parameterType="de.nrw.it.ignrw.administration.entity.UAUser">
         UPDATE ua_user
         SET
-            username = #{username},
+            username = #{use,
+            passwd = #{passwd}rname},
             first_name = #{firstname},
             last_name = #{lastname},
             mail = #{mail},
