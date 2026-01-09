@@ -1,0 +1,92 @@
+package de.nrw.it.ignrw.administration.service;
+
+import de.nrw.it.ignrw.administration.assembler.UserListAssembler;
+import de.nrw.it.ignrw.administration.dto.User;
+import de.nrw.it.ignrw.administration.dto.UserInt;
+import de.nrw.it.ignrw.administration.entity.UAUser;
+import de.nrw.it.ignrw.administration.mapper.UserMapper;
+import de.nrw.it.ignrw.administration.repository.UserRepo;
+import de.nrw.it.ignrw.administration.request.OrganisationSearchRequest;
+import de.nrw.it.ignrw.administration.request.UserRequest;
+import de.nrw.it.ignrw.administration.request.UserSearchRequest;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+@Service
+public class UserService {
+
+    private final UserRepo userRepo;
+    private final UserMapper userMapper;
+
+    public UserService(UserRepo userRepo, UserMapper userMapper) {
+        this.userRepo = userRepo;
+        this.userMapper = userMapper;
+    }
+
+    public UserInt getUserDetails(UserSearchRequest userFilter) {
+        UAUser uaUser = userRepo.getUserDetails(userFilter);
+        User user = userMapper.toUser(uaUser);
+
+        return user;
+    }
+
+    public List<UserInt> getUsers(UserSearchRequest userFilter, OrganisationSearchRequest organisationFilter) {
+        List<UAUser> uaUsers = userRepo.findUsers(userFilter, organisationFilter);
+        List<UserInt> users = uaUsers.stream().map(userMapper::toUser).collect(Collectors.toList());
+        return users;
+    }
+
+    public Integer deleteUser(UUID userUid) {
+        return userRepo.deleteUser(userUid);
+    }
+
+    public Integer createUser(UserRequest user) {
+        String username = generateUsername(user);
+
+        UAUser userEntity = userMapper.toEntity(user);
+        userEntity.setUsername(username);
+
+        // UUID generieren für neuen Benutzer
+        if (userEntity.getUserUid() == null) {
+            userEntity.setUserUid(UUID.randomUUID());
+        }
+
+        int result = userRepo.createUser(userEntity);
+
+        // Organisation und Rolle hinzufügen, falls vorhanden
+        if (user.getOrganisation() != null && !user.getOrganisation().isEmpty() &&
+                user.getRole() != null && !user.getRole().isEmpty()) {
+            userRepo.insertUserRoleOrg(userEntity.getUserUid(), user.getOrganisation(), user.getRole());
+        }
+
+        return result;
+    }
+
+    public Integer updateUser(UserRequest user) {
+        String username = generateUsername(user);
+
+        UAUser userEntity = userMapper.toEntity(user);
+        userEntity.setUsername(username);
+
+        int result = userRepo.updateUser(userEntity);
+
+        // Organisation und Rolle aktualisieren
+        if (user.getOrganisation() != null && !user.getOrganisation().isEmpty() &&
+                user.getRole() != null && !user.getRole().isEmpty()) {
+            // Alte Verkenüpfungen löschen
+            userRepo.deleteUserRoleOrg(userEntity.getUserUid());
+            // Neue Verknüpfung erstellen
+            userRepo.insertUserRoleOrg(userEntity.getUserUid(), user.getOrganisation(), user.getRole());
+        }
+
+        return result;
+    }
+
+    private String generateUsername(UserRequest user) {
+        return user.getLastName() + 1;
+    }
+
+}
