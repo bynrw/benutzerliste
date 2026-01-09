@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+        <!DOCTYPE mapper
+                PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+                "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="de.nrw.it.ignrw.administration.entity.UALevelTyp">
+    <select id="findLevelTypes" resultType="de.nrw.it.ignrw.administration.entity.UALevelTyp">
+        select level_type_id, level_type_name
+        from ua_level_type
+        <where>
+            <if test="levelId != null">
+                level_type_id = #{levelId}
+
+            </if>
+        </where>
+    </select>
+
+    <select id="findOrgTypes" resultType="de.nrw.it.ignrw.administration.entity.UAOrgType">
+        select orgtype_id, orgtype_name, private_org, sort
+        from ua_orgtype;
+    </select>
+
+    </mapper>
