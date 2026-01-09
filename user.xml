@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="de.nrw.it.ignrw.administration.repository.UserRepo">
+
+    <!-- Ergebnis-Mapping -->
+    <resultMap id="RoleResultMap" type="de.nrw.it.ignrw.administration.entity.UARole">
+        <id property="roleId" column="role_id" />
+        <result property="roleName" column="role_name" />
+    </resultMap>
+
+    <resultMap id="OrganisationResultMap" type="de.nrw.it.ignrw.administration.entity.UAOrganisation">
+        <id property="orgId" column="org_id" />
+        <result property="orgName" column="org_name" />
+        <result property="orgtypeId" column="orgtype_id" />
+
+        <collection property="roles"
+                    ofType="de.nrw.it.ignrw.administration.entity.UARole"
+                    resultMap="RoleResultMap"/>
+    </resultMap>
+
+    <resultMap id="UidResultMap" type="de.nrw.it.ignrw.administration.entity.UAUser">
+        <result property="userUid" column="user_uid" typeHandler="de.nrw.it.ignrw.administration.config.UUIDTypeHandler"/>
+        <result property="username" column="username"/>
+        <result property="firstname" column="first_name"/>
+        <result property="lastname" column="last_name"/>
+        <result property="mail" column="mail"/>
+        <result property="phone" column="phone"/>
+        <result property="wrongPasswd" column="wrong_passwd"/>
+
+        <collection property="organisations"
+                    ofType="de.nrw.it.ignrw.administration.entity.UAOrganisation"
+                    resultMap="OrganisationResultMap"/>
+    </resultMap>
+
+    <select id="findUsers" resultMap="UidResultMap" parameterType="map">
+        SELECT DISTINCT
+            uu.user_id,
+            uu.user_uid,
+            uu.username,
+            uu.first_name,
+            uu.last_name,
+            uu.mail,
+            uu.phone,
+            uo.org_id,
+            uo.org_name,
+            uo.orgtype_id,
+            ur.role_id,
+            ur.role_name
+        FROM ua_user uu
+        LEFT JOIN ua_user_role_org uuro ON uu.user_id = uuro.user_id
+        LEFT JOIN ua_organisation uo ON uuro.org_id = uo.org_id
+        LEFT JOIN ua_roles ur ON uuro.role_id = ur.role_id
+        <where>
+            <if test="userFilter != null and userFilter.userUid != null">
+                AND uu.user_uid = #{userFilter.userUid}
+            </if>
+            
+            <if test="orgFilter != null and orgFilter.orgUid != null">
+                AND uo.org_uid = #{orgFilter.orgUid}
+            </if>
+
+            <if test="userFilter != null and userFilter.searchUsernameOrLastname != null and userFilter.searchUsernameOrLastname != ''">
+                AND (
+                <choose>
+                    <when test="userFilter.searchMode != null and userFilter.searchMode.name() == 'EXACT'">
+                        uu.username ILIKE #{userFilter.searchUsernameOrLastname}
+                        OR uu.last_name ILIKE #{userFilter.searchUsernameOrLastname}
+                    </when>
+                    <when test="userFilter.searchMode != null and userFilter.searchMode.name() == 'PREFIX'">
+                        uu.username ILIKE CONCAT(#{userFilter.searchUsernameOrLastname}, '%')
+                        OR uu.last_name ILIKE CONCAT(#{userFilter.searchUsernameOrLastname}, '%')
+                    </when>
+                    <when test="userFilter.searchMode != null and userFilter.searchMode.name() == 'SUBSTRING'">
+                        uu.username ILIKE CONCAT('%', #{userFilter.searchUsernameOrLastname}, '%')
+                        OR uu.last_name ILIKE CONCAT('%', #{userFilter.searchUsernameOrLastname}, '%')
+                    </when>
+                    <otherwise>
+                        uu.username ILIKE #{userFilter.searchUsernameOrLastname}
+                        OR uu.last_name ILIKE #{userFilter.searchUsernameOrLastname}
+                    </otherwise>
+                </choose>
+                )
+            </if>
+        </where>
+        ORDER BY uu.last_name, uu.first_name
+    </select>
+
+    <select id="getUserDetails" resultMap="UidResultMap">
+        SELECT DISTINCT
+            uu.user_id,
+            uu.user_uid,
+            uu.username,
+            uu.first_name,
+            uu.last_name,
+            uu.mail,
+            uu.phone,
+            uo.org_id,
+            uo.org_name,
+            uo.orgtype_id,
+            ur.role_id,
+            ur.role_name
+        FROM ua_user uu
+            LEFT JOIN ua_user_role_org uuro ON uu.user_id = uuro.user_id
+            LEFT JOIN ua_organisation uo ON uuro.org_id = uo.org_id
+            LEFT JOIN ua_roles ur ON uuro.role_id = ur.role_id
+        WHERE uu.user_uid = #{userFilter.userUid}
+        ORDER BY uu.last_name, uu.first_name
+    </select>
+
+    <!-- Neuen Benutzer erstellen -->
+    <insert id="createUser" parameterType="de.nrw.it.ignrw.administration.entity.UAUser">
+        INSERT INTO ua_user (
+            user_uid,
+            username,
+            first_name,
+            last_name,
+            mail,
+            phone
+        ) VALUES (
+            #{userUid, typeHandler=de.nrw.it.ignrw.administration.config.UUIDTypeHandler},
+            #{username},
+            #{firstname},
+            #{lastname},
+            #{mail},
+            #{phone}
+        )
+    </insert>
+
+    <!-- Benutzer aktualisieren -->
+    <update id="updateUser" parameterType="de.nrw.it.ignrw.administration.entity.UAUser">
+        UPDATE ua_user
+        SET
+            username = #{username},
+            first_name = #{firstname},
+            last_name = #{lastname},
+            mail = #{mail},
+            phone = #{phone}
+        WHERE user_uid = #{userUid, typeHandler=de.nrw.it.ignrw.administration.config.UUIDTypeHandler}
+    </update>
+
+    <!-- Benutzer löschen -->
+    <delete id="deleteUser" parameterType="java.util.UUID">
+        DELETE FROM ua_user
+        WHERE user_uid = #{userUid, typeHandler=de.nrw.it.ignrw.administration.config.UUIDTypeHandler}
+    </delete>
+
+</mapper>
